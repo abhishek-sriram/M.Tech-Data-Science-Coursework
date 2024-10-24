@@ -1,0 +1,161 @@
+SQOOP
+-----
+set up retail_db in mysql
+Sqoop User Guide 1.4.6
+/usr/hdp/current/dqoop-client/lib
+show list-databases args(username,password,password file etc)
+
+
+sqoop list-databases \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal \
+  --username sqoopuser \
+  --password NHkkP876rp
+
+sqoop list-tables \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/retail_db \
+  --username sqoopuser \
+  --password NHkkP876rp
+
+eval - you can write pre and post import to db using eval
+
+sqoop eval \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/retail_db \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --query "SELECT * FROM order_items LIMIT 10"
+
+
+
+import
+all the arguments. diff between target-dir and warehouse-dir
+run eval before trying the actual import
+sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table order_items \
+  --warehouse-dir /user/raghuramanav3825/sqoop_import/retail_db 
+  
+  
+
+  sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex  \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table order_items \
+  --target-dir /user/raghuramanav3825/sqoop_import/retail_db/order_items
+  
+  check the yarn history server URL for task and counter details
+Managing traget directories--->show sqoop import arguments
+  sqoop import \
+   --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex  \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table order_items \
+  --warehouse-dir /user/raghuramanav3825/sqoop_import/retail_db \
+  --num-mappers 1 \
+  --delete-target-dir
+
+ sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex  \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table order_items \
+  --warehouse-dir /user/raghuramanav3825/sqoop_import/retail_db \
+  --num-mappers 1 \
+  --append
+
+  SPLIT BY
+  For performance, reason choose a column which is indexed as part of the split-by clause
+If there are null values in the column, corresponding records from the table will be ignored
+Data in the split-by column need not be unique, but if there are duplicates then there can be a skew in the data while importing (which means some files might be relatively bigger compared to other files)
+Try without mentioning split by
+ create table order_items_nopk as select * from order_items;
+ describe order_items_nopk;
+ sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex  \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table order_items_nopk \
+  --warehouse-dir /user/raghuramanav3825/sqoop_import/retail_db 
+
+ sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex  \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table order_items_nopk \
+  --warehouse-dir /user/raghuramanav3825/sqoop_import/retail_db \
+  --split-by order_item_order_id
+
+
+COLUMNS AND QUERY
+For query, we cannot use warehourse-dir,must have $COND,cant use columns,must use split-by
+
+sqoop import \
+--connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table order_items \
+--columns order_item_order_id,order_item_id,order_item_subtotal \
+--warehouse-dir /user/raghuramanav3825/sqoop_import/retail_db \
+--num-mappers 2
+
+sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --target-dir /user/raghuramanav3825/sqoop_import/retail_db/orders_with_revenue \
+  --num-mappers 2 \
+  --query "select o.*, sum(oi.order_item_subtotal) order_revenue from orders o join order_items1 oi on o.order_id = oi.order_item_order_id and \$CONDITIONS group by o.order_id, o.order_date, o.order_customer_id, o.order_status" \
+  --split-by order_id \
+  --driver 'com.mysql.jdbc.Driver'
+
+  SIMPLE HIVE IMPORT
+sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex  \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table order_items \
+  --hive-import \
+  --hive-database de100 \
+  --hive-table order_items \
+  --num-mappers 2 
+
+  
+SQOOP EXPORT
+------------
+First, make sure that we have the hive table order_items
+Now, import orders table to a hive table called orders
+
+sqoop import \
+  --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex  \
+  --username sqoopuser \
+  --password NHkkP876rp \
+  --table orders \
+  --hive-import \
+  --hive-database de100 \
+  --hive-table orders \
+  --num-mappers 1 \
+  --driver 'com.mysql.jdbc.Driver'
+
+  Now log on to hive, and run the join query to create daily revenue table
+create table daily_revenue as
+select order_date, sum(order_item_subtotal) as daily_revenue
+from orders join order_items on
+order_id = order_item_order_id
+where order_date like '2013-07%'
+group by order_date;
+
+In MySQL
+create table daily_revenue_de100(
+  order_date varchar(30),
+  revenue float
+);
+sqoop export \
+ --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex \
+ --username sqoopuser \
+ --password NHkkP876rp \
+ --export-dir /apps/hive/warehouse/de100.db/daily_revenue \
+ --table daily_revenue_de100 \
+ --input-fields-terminated-by "\001"
+
