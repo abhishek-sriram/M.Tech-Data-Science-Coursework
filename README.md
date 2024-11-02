@@ -29,3 +29,6 @@ The repository is organized into the following directories:
 
 ### 8. **Statistics for Machine Learning**
    - **Description**: Assignments covering statistical methods and hypothesis testing, essential for building machine learning models.
+
+### 9. **Big Data for Machine Learning**
+   - **Description**: Assignments covering Hadoop, Hive, Sqoop, MongoDB and Spark essential for Data Engineering.
