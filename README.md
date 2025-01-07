@@ -32,3 +32,5 @@ The repository is organized into the following directories:
 
 ### 9. **Big Data for Machine Learning**
    - **Description**: Assignments covering Hadoop, Hive, Sqoop, MongoDB and Spark which are essential for Data Engineering.
+### 10. **Time Series Forcasting**
+   - **Description**: Assignments and Projects involving exploring basic concepts of time series data, including trend, seasonality, and stationarity analysis. Implementations of moving average, exponential smoothing, and decomposition methods. Implementing ARIMA, SARIMA, and seasonal decomposition of time series. Includes parameter tuning, residual analysis, and performance evaluation.
